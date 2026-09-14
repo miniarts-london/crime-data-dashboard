@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Autocomplete, Box, TextField, Button, CircularProgress, Typography } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs, { type Dayjs } from 'dayjs';
 import { parsePostcodesInput } from '@/lib/postcodes';
 import { MIN_SUGGEST_CHARS} from '@/config/config'
 
@@ -35,6 +37,8 @@ export default function SearchBar({
   const [suggestLoading, setSuggestLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const latestMonth = dayjs().startOf('month');
+  const fromDate = from ? dayjs(`${from}-01`) : null;
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -65,9 +69,29 @@ export default function SearchBar({
     onPostcodesChange(Array.from(merged));
   };
 
+  const isUnavailableMonth = (month: Dayjs, min?: Dayjs | null) => {
+    if (month.isAfter(latestMonth, 'month')) return true;
+    if (min && month.isBefore(min, 'month')) return true;
+    return false;
+  };
+
   const options = liveOptions;
   const { valid } = parsePostcodesInput([...postcodes, inputValue].join(','));
   const canSearch = valid.length > 0 && !loading;
+  const dateFieldSx = {
+    width: { xs: '100%', sm: 'auto' },
+    '& .MuiOutlinedInput-root': {
+      height: 40,
+      minHeight: 40,
+      boxSizing: 'border-box' as const,
+    },
+  };
+  const datePickerSx = {
+    width: { xs: '100%', sm: 'auto' },
+    minWidth: { xs: '100%', sm: 0 },
+    flex: { xs: '1 1 100%', sm: '0 0 auto' },
+    '& .MuiTextField-root': { width: { xs: '100%', sm: 'auto' } },
+  };
 
   return (
     <Box
@@ -135,7 +159,40 @@ export default function SearchBar({
           flex: { xs: '1 1 100%', sm: '1 1 260px' },
         }}
       />
-      From / To
+      <DatePicker
+        label="From"
+        views={['year', 'month']}
+        openTo="month"
+        format="MMM YYYY"
+        value={fromDate}
+        maxDate={latestMonth}
+        shouldDisableMonth={(month) => isUnavailableMonth(month)}
+        enableAccessibleFieldDOMStructure={false}
+        onChange={(newValue: Dayjs | null) => {
+          if (!newValue || !newValue.isValid()) return;
+          const nextFrom = newValue.format('YYYY-MM');
+          onFromChange(nextFrom);
+          if (to && nextFrom > to) onToChange(nextFrom);
+        }}
+        sx={datePickerSx}
+        slotProps={{ textField: { size: 'small', sx: dateFieldSx } }}
+      />
+      <DatePicker
+        label="To"
+        views={['year', 'month']}
+        openTo="month"
+        format="MMM YYYY"
+        value={to ? dayjs(`${to}-01`) : null}
+        minDate={fromDate ?? undefined}
+        maxDate={latestMonth}
+        shouldDisableMonth={(month) => isUnavailableMonth(month, fromDate)}
+        enableAccessibleFieldDOMStructure={false}
+        onChange={(newValue: Dayjs | null) => {
+          if (newValue && newValue.isValid()) onToChange(newValue.format('YYYY-MM'));
+        }}
+        sx={datePickerSx}
+        slotProps={{ textField: { size: 'small', sx: dateFieldSx } }}
+      />
       <Button type="submit" variant="contained" aria-label="Search" disabled={!canSearch} sx={{ height: 40 }}>
         {loading ? <CircularProgress size={20} color="inherit" /> : 'Search'}
       </Button>
