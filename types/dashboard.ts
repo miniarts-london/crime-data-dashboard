@@ -50,3 +50,9 @@ export interface GeocodeResult {
   lng: number;
   label: string;
 }
+
+export interface QuickFilters {
+  postcode: string | null;
+  category: string | null;
+  outcome: string | null;
+}

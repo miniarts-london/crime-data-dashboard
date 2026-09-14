@@ -1,0 +1,51 @@
+.crime-popup {
+  min-width: 160px;
+}
+
+.crime-popup-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #52514e;
+}
+
+.crime-popup-list {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.crime-popup-rule {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+.crime-marker-icon,
+.search-marker-icon {
+  background: none;
+  border: none;
+}
+
+.crime-dot,
+.search-dot {
+  display: block;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.crime-dot {
+  width: 16px;
+  height: 16px;
+}
+
+.search-dot {
+  width: 18px;
+  height: 18px;
+  background: #000080;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  color: #0b0b0b;
+}

@@ -3,6 +3,7 @@
 import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress, Chip, Stack } from "@mui/material";
 import SearchBar from "./SearchBar";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { CrimeRecord, InitialParams, QuickFilters, SearchPoint } from "@/types/dashboard";
 import { parsePostcodesInput } from "@/lib/postcodes";
 import { currentMonth, monthsBetween } from "@/lib/dateRange";
@@ -16,6 +17,15 @@ import SnackBar from "./snackBar";
 import CrimeOverview from "./CrimeOverview";
 import CrimeTable from "./CrimeTable";
 
+const CrimeMap = dynamic(() => import("./CrimeMap"), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Typography variant="body2" color="text.secondary">Loading map…</Typography>
+    </Box>
+  ),
+});
+
 const limiter = createLimiter(4);
 
 export default function Dashboard({ initialParams }: { initialParams: InitialParams }) {
@@ -25,11 +35,13 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [to, setTo] = useState(initialParams.to);
   const [notice, setNotice] = useState('');
   const [crimes, setCrimes] = useState<CrimeRecord[]>([]);
+  const [searchPoints, setSearchPoints] = useState<SearchPoint[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState('');
   const [openSnackBar, setOpenSnackBar] = useState(false);
+  
   const searchGen = useRef(0);
   const didAutoSearch = useRef(false);
 
@@ -96,6 +108,8 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       );
 
       if (!stillCurrent()) return;
+      
+      setSearchPoints(geocoded);
 
       if (geocoded.length === 0) {
         setCrimes([]);
@@ -243,6 +257,12 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
                 <Typography variant="overline" color="primary">
                   Crime Map
                 </Typography>
+                <Box sx={{ height: 360, mt: 1, '& .leaflet-container': { height: '100%', width: '100%' } }}>
+                  <CrimeMap
+                    crimes={filteredCrimes}
+                    searchPoints={searchPoints}
+                  />
+                </Box>
               </Box>
             </Paper>
           </Grid>
