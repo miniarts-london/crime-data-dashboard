@@ -11,7 +11,7 @@ import Header from "./Header";
 import { useColorMode } from "./ContextRoot/Providers";
 import { MAX_REQUESTS } from "@/config/config";
 import { fetchCrimes, geocodePostcode } from '@/lib/police';
-import { normalize, updateQueryString } from "@/components/Helper";
+import { clearQueryString, normalize, updateQueryString } from "@/components/Helper";
 import { createLimiter } from "@/lib/concurrency";
 import SnackBar from "./snackBar";
 import CrimeOverview from "./CrimeOverview";
@@ -185,7 +185,21 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   };
 
   const handleReset = () => {
-   console.log('Resetting search');
+    searchGen.current += 1;
+    const month = currentMonth();
+    setPostcodes([]);
+    setFrom(month);
+    setTo(month);
+    setNotice('');
+    setSearchPoints([]);
+    setCrimes([]);
+    setQuickFilters({ postcode: null, category: null, outcome: null });
+    setError('');
+    setOpenSnackBar(false);
+    setLoading(false);
+    setProgress(null);
+    history.clear();
+    clearQueryString();
   };
 
   const handleCloseSnackbar = () => {
