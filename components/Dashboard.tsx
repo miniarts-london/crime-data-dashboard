@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress } from "@mui/material";
+import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress, Chip, Stack } from "@mui/material";
 import SearchBar from "./SearchBar";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CrimeRecord, InitialParams, QuickFilters, SearchPoint } from "@/types/dashboard";
@@ -14,6 +14,7 @@ import { normalize, updateQueryString } from "@/components/Helper";
 import { createLimiter } from "@/lib/concurrency";
 import SnackBar from "./snackBar";
 import CrimeOverview from "./CrimeOverview";
+import CrimeTable from "./CrimeTable";
 
 const limiter = createLimiter(4);
 
@@ -133,7 +134,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  
+
   useEffect(() => {
     if (didAutoSearch.current) return;
     didAutoSearch.current = true;
@@ -171,6 +172,14 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     setError('')
   }
 
+  const activeFilterChips = (Object.entries(quickFilters) as [keyof QuickFilters, string | null][]).filter(
+    ([, v]) => v
+  );
+
+  const handleQuickFilter = (field: keyof QuickFilters, value: string) => {
+    setQuickFilters((prev) => ({ ...prev, [field]: prev[field] === value ? null : value }));
+  };
+
   return (
     <>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -198,6 +207,21 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             <LinearProgress 
               variant="determinate" 
               value={(progress.done / progress.total) * 100} />
+          )}
+          {activeFilterChips.length > 0 && (
+            <Stack direction="row" spacing={1} sx={{ px: 2, py: 1, flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                Filtered by:
+              </Typography>
+              {activeFilterChips.map(([field, value]) => (
+                <Chip
+                  key={field}
+                  size="small"
+                  label={`${field}: ${value}`}
+                  onDelete={() => handleQuickFilter(field, value as string)}
+                />
+              ))}
+            </Stack>
           )}
         </AppBar>
         <Grid container sx={{p:2, pb:0}}>
@@ -231,6 +255,11 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
                 <Typography variant="body2" color="text.secondary">
                   Click a postcode, crime type, or outcome status to filter the results
                 </Typography>
+                <CrimeTable
+                  crimes={filteredCrimes} 
+                  onQuickFilter={handleQuickFilter} 
+                  activeFilters={quickFilters} 
+                />
               </Box>
             </Paper>
           </Grid>
