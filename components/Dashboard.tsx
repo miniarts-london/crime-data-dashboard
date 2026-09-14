@@ -1,11 +1,13 @@
 'use client';
 
-import { Box, Stack, Typography, Grid, AppBar, Paper, Toolbar } from "@mui/material";
+import { Box, Typography, Grid, AppBar, Paper, Toolbar } from "@mui/material";
 import SearchBar from "./SearchBar";
 import { FormEvent, useState } from "react";
 import { parseSearchParams } from "./Helper";
 import { parsePostcodesInput } from "@/lib/postcodes";
 import { currentMonth } from "@/lib/dateRange";
+import Header from "./Header";
+import { useColorMode } from "./ContextRoot/Providers";
 
 export interface InitialParams {
   postcodes: string[];
@@ -14,7 +16,7 @@ export interface InitialParams {
 }
 
 export default function Dashboard() {
-
+  const { mode, toggleColorMode } = useColorMode();
   const [initialParams] = useState<InitialParams>(() => parseSearchParams());
   const [postcodes, setPostcodes] = useState<string[]>(initialParams.postcodes);
   const [from, setFrom] = useState(initialParams.from);
@@ -49,20 +51,10 @@ export default function Dashboard() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <AppBar position="static" color="default" elevation={1}>
         <Toolbar sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, py: 1.5 }}>
-          <Stack direction="row" sx={{ width: '100%', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography variant="overline" color="primary">
-                UK Police data
-              </Typography>
-              <Typography variant="h4">
-                Crime Data Dashboard
-              </Typography>
-              <Typography variant="body1" sx={{ maxWidth: 800, mb: 2 }}>
-                Enter one or more postcodes to view totals, a map, and a filterable table. Police.uk
-                street-level data is usually published about two months behind.
-              </Typography>
-            </Box>
-          </Stack>
+          <Header
+            mode={mode}
+            toggleColorMode={toggleColorMode}
+          />
           <SearchBar
             postcodes={postcodes}
             onPostcodesChange={setPostcodes}
