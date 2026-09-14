@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -20,14 +20,6 @@ const DARK_TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}
 const DARK_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-const searchDivIcon = L.divIcon({
-  className: 'search-marker-icon',
-  html: '<span class="search-dot"></span>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-  popupAnchor: [0, -10],
-});
-
 function crimeDivIcon(color: string) {
   return L.divIcon({
     className: 'crime-marker-icon',
@@ -36,6 +28,17 @@ function crimeDivIcon(color: string) {
     iconAnchor: [8, 8],
     popupAnchor: [0, -10],
   });
+}
+
+function InvalidateSize() {
+  const map = useMap();
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      map.invalidateSize();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [map]);
+  return null;
 }
 
 function FitBounds({ points }: { points: [number, number][] }) {
@@ -97,7 +100,11 @@ function ClusterLayer({ crimes, mode }: { crimes: CrimeRecord[]; mode: ColorMode
 
     map.addLayer(cluster);
     return () => {
-      map.removeLayer(cluster);
+      try {
+        map.removeLayer(cluster);
+      } catch {
+        // Map already destroyed (Strict Mode / Fast Refresh).
+      }
     };
   }, [map, crimes, mode]);
 
@@ -111,16 +118,44 @@ interface CrimeMapProps {
 
 export default function CrimeMap({ crimes, searchPoints }: CrimeMapProps) {
   const { mode } = useColorMode();
+  const [mapKey, setMapKey] = useState(0);
+  const searchDivIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: 'search-marker-icon',
+        html: '<span class="search-dot"></span>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+        popupAnchor: [0, -10],
+      }),
+    []
+  );
   const mappable = crimes.filter((c) => c.hasLocation && c.lat !== null && c.lng !== null);
   const boundsPoints: [number, number][] = [
     ...searchPoints.map((p): [number, number] => [p.lat, p.lng]),
     ...mappable.map((c): [number, number] => [c.lat as number, c.lng as number]),
   ];
 
+  // Leaflet keeps a stale map instance across Fast Refresh / Strict Mode
+  // remounts. Bump the key after mount so MapContainer always binds to a live DOM node.
+  useEffect(() => {
+    setMapKey((key) => key + 1);
+  }, []);
+
+  if (mapKey === 0) {
+    return <div style={{ height: '100%', width: '100%' }} />;
+  }
+
   return (
-    <MapContainer center={[51.5074, -0.1278]} zoom={12} maxZoom={18} style={{ height: '100%', width: '100%' }}>
+    <MapContainer
+      key={mapKey}
+      center={[51.5074, -0.1278]}
+      zoom={12}
+      maxZoom={18}
+      style={{ height: '100%', width: '100%' }}
+    >
+      <InvalidateSize />
       <TileLayer
-        key={mode}
         attribution={mode === 'dark' ? DARK_ATTRIBUTION : LIGHT_ATTRIBUTION}
         url={mode === 'dark' ? DARK_TILE_URL : LIGHT_TILE_URL}
       />

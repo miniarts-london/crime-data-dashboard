@@ -51,8 +51,8 @@ export default function SearchBar({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
 
-    const query = inputValue.trim();
-    if (query.length < MIN_SUGGEST_CHARS) {
+    const query = inputValue;
+    if (query.trim().length < MIN_SUGGEST_CHARS) {
       queueMicrotask(() => {
         setLiveOptions([]);
         setSuggestLoading(false);
@@ -65,14 +65,18 @@ export default function SearchBar({
       const controller = new AbortController();
       abortRef.current = controller;
       suggestPostcodes(query, controller.signal)
-        .then((results) => setLiveOptions(results))
-        .catch(() => {
-          // Aborted (superseded by newer keystrokes) or the autocomplete API
-          // is unreachable - either way, just show no suggestions rather
-          // than blocking typing/searching.
+        .then((results) => {
+          if (!controller.signal.aborted) setLiveOptions(results);
+        })
+        .catch((err: unknown) => {
+          if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+            return;
+          }
           setLiveOptions([]);
         })
-        .finally(() => setSuggestLoading(false));
+        .finally(() => {
+          if (!controller.signal.aborted) setSuggestLoading(false);
+        });
     }, SUGGEST_DEBOUNCE_MS);
 
     return () => {
@@ -123,6 +127,7 @@ export default function SearchBar({
   return (
     <Box
       component="form"
+      autoComplete="off"
       onSubmit={(event) => {
         if (!canSearch) {
           event.preventDefault();
@@ -137,6 +142,7 @@ export default function SearchBar({
         freeSolo
         filterSelectedOptions
         options={options}
+        filterOptions={(opts) => opts}
         loading={suggestLoading}
         value={postcodes}
         inputValue={inputValue}
@@ -168,6 +174,14 @@ export default function SearchBar({
             }}
             slotProps={{
               ...params.slotProps,
+              htmlInput: {
+                ...params.slotProps.htmlInput,
+                autoComplete: 'off',
+                'data-lpignore': 'true',
+                'data-1p-ignore': 'true',
+                'data-bwignore': 'true',
+                'data-form-type': 'other',
+              },
               input: {
                 ...params.slotProps.input,
                 endAdornment: (
