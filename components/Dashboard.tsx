@@ -16,6 +16,8 @@ import { createLimiter } from "@/lib/concurrency";
 import SnackBar from "./snackBar";
 import CrimeOverview from "./CrimeOverview";
 import CrimeTable from "./CrimeTable";
+import PostcodeHistory from "./PostcodeHistory";
+import { usePostcodeHistory } from "@/lib/usePostcodeHistory";
 
 const CrimeMap = dynamic(() => import("./CrimeMap"), {
   ssr: false,
@@ -30,6 +32,8 @@ const limiter = createLimiter(4);
 
 export default function Dashboard({ initialParams }: { initialParams: InitialParams }) {
   const { mode, toggleColorMode } = useColorMode();
+  const history = usePostcodeHistory();
+
   const [postcodes, setPostcodes] = useState<string[]>(initialParams.postcodes);
   const [from, setFrom] = useState(initialParams.from);
   const [to, setTo] = useState(initialParams.to);
@@ -108,8 +112,11 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       );
 
       if (!stillCurrent()) return;
-      
+
       setSearchPoints(geocoded);
+      if (geocoded.length > 0) {
+        history.record(geocoded.map((g) => g.postcode));
+      }
 
       if (geocoded.length === 0) {
         setCrimes([]);
@@ -147,7 +154,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [history.record]);
 
   useEffect(() => {
     if (didAutoSearch.current) return;
@@ -194,6 +201,16 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     setQuickFilters((prev) => ({ ...prev, [field]: prev[field] === value ? null : value }));
   };
 
+  const handleHistorySelect = (postcode: string) => {
+    setPostcodes([postcode]);
+    setNotice('');
+    const useFrom = from || currentMonth();
+    const useTo = to || currentMonth();
+    setFrom(useFrom);
+    setTo(useTo);
+    runSearch([postcode], useFrom, useTo);
+  };
+
   return (
     <>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -206,7 +223,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             <SearchBar
               postcodes={postcodes}
               onPostcodesChange={setPostcodes}
-              postcodeOptions={[]}
+              postcodeOptions={history.entries.map((e) => e.postcode)}
               from={from}
               onFromChange={setFrom}
               to={to}
@@ -240,7 +257,11 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
         </AppBar>
         <Grid container sx={{p:2, pb:0}}>
           <Grid size={{xs:12, sm:12, md:2}} sx={{p:1}}>
-            {/* postcode search history */}
+            <PostcodeHistory
+              entries={history.entries} 
+              onSelect={handleHistorySelect} 
+              onRemove={history.remove} 
+            />
           </Grid>
           <Grid size={{xs:12, sm:12, md:'grow'}} sx={{ p:1 }}>
             <CrimeOverview 
