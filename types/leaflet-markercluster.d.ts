@@ -22,9 +22,7 @@ declare module 'leaflet' {
     layer: MarkerCluster;
   }
 
-  interface MarkerClusterGroup extends LayerGroup {
-    on(type: 'clusterclick', fn: (event: MarkerClusterMouseEvent) => void): this;
-  }
+  interface MarkerClusterGroup extends FeatureGroup {}
 
   function markerClusterGroup(options?: MarkerClusterGroupOptions): MarkerClusterGroup;
 }

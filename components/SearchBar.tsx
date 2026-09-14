@@ -208,7 +208,6 @@ export default function SearchBar({
         value={fromDate}
         maxDate={latestMonth}
         shouldDisableMonth={(month) => isUnavailableMonth(month)}
-        enableAccessibleFieldDOMStructure={false}
         onChange={(newValue: Dayjs | null) => {
           if (!newValue || !newValue.isValid()) return;
           const nextFrom = newValue.format('YYYY-MM');
@@ -227,7 +226,6 @@ export default function SearchBar({
         minDate={fromDate ?? undefined}
         maxDate={latestMonth}
         shouldDisableMonth={(month) => isUnavailableMonth(month, fromDate)}
-        enableAccessibleFieldDOMStructure={false}
         onChange={(newValue: Dayjs | null) => {
           if (newValue && newValue.isValid()) onToChange(newValue.format('YYYY-MM'));
         }}

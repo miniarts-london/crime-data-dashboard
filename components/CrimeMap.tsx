@@ -68,8 +68,9 @@ function ClusterLayer({ crimes, mode }: { crimes: CrimeRecord[]; mode: ColorMode
       spiderfyDistanceMultiplier: 1.6,
     });
 
-    cluster.on('clusterclick', (event) => {
-      const markers = event.layer.getAllChildMarkers();
+    cluster.on('clusterclick', (event: L.LeafletEvent) => {
+      const clusterLayer = (event as L.MarkerClusterMouseEvent).layer;
+      const markers = clusterLayer.getAllChildMarkers();
       const first = markers[0]?.getLatLng();
       const overlapping = Boolean(
         first && markers.every((marker) => marker.getLatLng().distanceTo(first) < 5)
@@ -80,12 +81,12 @@ function ClusterLayer({ crimes, mode }: { crimes: CrimeRecord[]; mode: ColorMode
           .filter((content): content is string => typeof content === 'string' && content.length > 0)
           .join('<hr class="crime-popup-rule" />');
         L.popup({ maxWidth: 280, maxHeight: 240, autoPan: true })
-          .setLatLng(event.layer.getLatLng())
+          .setLatLng(clusterLayer.getLatLng())
           .setContent(`<div class="crime-popup-list">${html}</div>`)
           .openOn(map);
         return;
       }
-      event.layer.zoomToBounds({ padding: [24, 24] });
+      clusterLayer.zoomToBounds({ padding: [24, 24] });
     });
 
     crimes.forEach((crime) => {
