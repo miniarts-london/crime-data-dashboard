@@ -1,8 +1,49 @@
 'use client';
 
 import { Box, Stack, Typography, Grid, AppBar, Paper, Toolbar } from "@mui/material";
+import SearchBar from "./SearchBar";
+import { FormEvent, useState } from "react";
+import { parseSearchParams } from "./Helper";
+import { parsePostcodesInput } from "@/lib/postcodes";
+import { currentMonth } from "@/lib/dateRange";
+
+export interface InitialParams {
+  postcodes: string[];
+  from: string;
+  to: string;
+}
 
 export default function Dashboard() {
+
+  const [initialParams] = useState<InitialParams>(() => parseSearchParams());
+  const [postcodes, setPostcodes] = useState<string[]>(initialParams.postcodes);
+  const [from, setFrom] = useState(initialParams.from);
+  const [to, setTo] = useState(initialParams.to);
+  const [notice, setNotice] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const runSearch = (postcodes: string[], from: string, to: string) => {console.log('Running search with:', postcodes, from, to);}
+
+  const handleSearchSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const { valid, invalid } = parsePostcodesInput(postcodes.join(','));
+    if (valid.length === 0) {
+      setNotice('Enter at least one valid UK postcode to search.');
+      return;
+    }
+    setNotice(invalid.length ? `Ignored invalid postcode(s): ${invalid.join(', ')}` : '');
+    // Reflect the validated, deduped, normalized set back into the chips.
+    setPostcodes(valid);
+    const useFrom = from || currentMonth();
+    const useTo = to || currentMonth();
+    setFrom(useFrom);
+    setTo(useTo);
+    runSearch(valid, useFrom, useTo);
+  };
+
+  const handleReset = () => {
+   console.log('Resetting search');
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -22,7 +63,18 @@ export default function Dashboard() {
               </Typography>
             </Box>
           </Stack>
-      {/* serchbar */}
+          <SearchBar
+            postcodes={postcodes}
+            onPostcodesChange={setPostcodes}
+            from={from}
+            onFromChange={setFrom}
+            to={to}
+            onToChange={setTo}
+            onSubmit={handleSearchSubmit}
+            onReset={handleReset}
+            loading={loading}
+            notice={notice}
+          />
         </Toolbar>
         
        
