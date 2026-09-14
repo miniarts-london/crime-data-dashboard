@@ -4,12 +4,14 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Autocomplete, Box, TextField, Button, CircularProgress, Typography } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { type Dayjs } from 'dayjs';
+import { suggestPostcodes } from '@/lib/postcodeSuggestions';
 import { parsePostcodesInput } from '@/lib/postcodes';
-import { MIN_SUGGEST_CHARS} from '@/config/config'
+import { MIN_SUGGEST_CHARS, SUGGEST_DEBOUNCE_MS} from '@/config/config'
 
 interface SearchBarProps {
   postcodes: string[];
   onPostcodesChange: (value: string[]) => void;
+  postcodeOptions: string[];
   from: string;
   onFromChange: (value: string) => void;
   to: string;
@@ -23,6 +25,7 @@ interface SearchBarProps {
 export default function SearchBar({
   postcodes,
   onPostcodesChange,
+  postcodeOptions,
   from,
   onFromChange,
   to,
@@ -40,6 +43,10 @@ export default function SearchBar({
   const latestMonth = dayjs().startOf('month');
   const fromDate = from ? dayjs(`${from}-01`) : null;
 
+  // Debounced live-suggestion fetch as the user types. Deferred with
+  // queueMicrotask where it sets state synchronously (matching the pattern
+  // used elsewhere in this app) to satisfy react-hooks/set-state-in-effect;
+  // the fetch itself is naturally async so its own setState calls are fine.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
@@ -53,6 +60,24 @@ export default function SearchBar({
       return;
     }
 
+    queueMicrotask(() => setSuggestLoading(true));
+    debounceRef.current = setTimeout(() => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+      suggestPostcodes(query, controller.signal)
+        .then((results) => setLiveOptions(results))
+        .catch(() => {
+          // Aborted (superseded by newer keystrokes) or the autocomplete API
+          // is unreachable - either way, just show no suggestions rather
+          // than blocking typing/searching.
+          setLiveOptions([]);
+        })
+        .finally(() => setSuggestLoading(false));
+    }, SUGGEST_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [inputValue]);
 
   // Splits on commas and adds each non-empty piece as a chip, deduping
@@ -75,7 +100,9 @@ export default function SearchBar({
     return false;
   };
 
-  const options = liveOptions;
+  // Below the character threshold (e.g. an empty field just clicked into),
+  // fall back to postcode search history so "recently searched" still shows.
+  const options = inputValue.trim().length >= MIN_SUGGEST_CHARS ? liveOptions : postcodeOptions;
   const { valid } = parsePostcodesInput([...postcodes, inputValue].join(','));
   const canSearch = valid.length > 0 && !loading;
   const dateFieldSx = {

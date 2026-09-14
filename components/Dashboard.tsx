@@ -3,21 +3,14 @@
 import { Box, Typography, Grid, AppBar, Paper, Toolbar } from "@mui/material";
 import SearchBar from "./SearchBar";
 import { FormEvent, useState } from "react";
-import { parseSearchParams } from "./Helper";
+import { type InitialParams } from "./Helper";
 import { parsePostcodesInput } from "@/lib/postcodes";
 import { currentMonth } from "@/lib/dateRange";
 import Header from "./Header";
 import { useColorMode } from "./ContextRoot/Providers";
 
-export interface InitialParams {
-  postcodes: string[];
-  from: string;
-  to: string;
-}
-
-export default function Dashboard() {
+export default function Dashboard({ initialParams }: { initialParams: InitialParams }) {
   const { mode, toggleColorMode } = useColorMode();
-  const [initialParams] = useState<InitialParams>(() => parseSearchParams());
   const [postcodes, setPostcodes] = useState<string[]>(initialParams.postcodes);
   const [from, setFrom] = useState(initialParams.from);
   const [to, setTo] = useState(initialParams.to);
@@ -58,6 +51,7 @@ export default function Dashboard() {
           <SearchBar
             postcodes={postcodes}
             onPostcodesChange={setPostcodes}
+            postcodeOptions={[]}
             from={from}
             onFromChange={setFrom}
             to={to}

@@ -1,20 +1,28 @@
 import { currentMonth } from "@/lib/dateRange";
 import { parsePostcodesInput } from "@/lib/postcodes";
+import { InitialParams } from "@/types/dashboard";
 
-export interface InitialParams {
-  postcodes: string[];
-  from: string;
-  to: string;
+function getParam(
+  search: URLSearchParams | Record<string, string | string[] | undefined>,
+  key: string,
+): string {
+  if (search instanceof URLSearchParams) {
+    return search.get(key) || '';
+  }
+  const value = search[key];
+  if (Array.isArray(value)) return value[0] || '';
+  return value || '';
 }
 
-export function parseSearchParams(): InitialParams {
-  const params = new URLSearchParams(window.location.search);
-  const { valid } = parsePostcodesInput(params.get('postcodes') || '');
+export function parseSearchParams(
+  search: URLSearchParams | Record<string, string | string[] | undefined>,
+): InitialParams {
+  const { valid } = parsePostcodesInput(getParam(search, 'postcodes'));
   const today = currentMonth();
   return {
     postcodes: valid,
-    from: params.get('from') || today,
-    to: params.get('to') || today,
+    from: getParam(search, 'from') || today,
+    to: getParam(search, 'to') || today,
   };
 }
 
