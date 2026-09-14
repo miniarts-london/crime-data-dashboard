@@ -3,7 +3,7 @@
 import { Box, Typography, Grid, AppBar, Paper, Toolbar } from "@mui/material";
 import SearchBar from "./SearchBar";
 import { FormEvent, useState } from "react";
-import { type InitialParams } from "./Helper";
+import { InitialParams } from "@/types/dashboard";
 import { parsePostcodesInput } from "@/lib/postcodes";
 import { currentMonth } from "@/lib/dateRange";
 import Header from "./Header";
