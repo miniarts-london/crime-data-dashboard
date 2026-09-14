@@ -1,13 +1,19 @@
 'use client';
 
-import { Box, Typography, Grid, AppBar, Paper, Toolbar } from "@mui/material";
+import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress } from "@mui/material";
 import SearchBar from "./SearchBar";
-import { FormEvent, useState } from "react";
-import { InitialParams } from "@/types/dashboard";
+import { FormEvent, useCallback, useRef, useState } from "react";
+import { CrimeRecord, InitialParams, SearchPoint } from "@/types/dashboard";
 import { parsePostcodesInput } from "@/lib/postcodes";
-import { currentMonth } from "@/lib/dateRange";
+import { currentMonth, monthsBetween } from "@/lib/dateRange";
 import Header from "./Header";
 import { useColorMode } from "./ContextRoot/Providers";
+import { MAX_REQUESTS } from "@/config/config";
+import { fetchCrimes, geocodePostcode } from '@/lib/police';
+import { normalize, updateQueryString } from "@/components/Helper";
+import { createLimiter } from "@/lib/concurrency";
+
+const limiter = createLimiter(4);
 
 export default function Dashboard({ initialParams }: { initialParams: InitialParams }) {
   const { mode, toggleColorMode } = useColorMode();
@@ -15,9 +21,90 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [from, setFrom] = useState(initialParams.from);
   const [to, setTo] = useState(initialParams.to);
   const [notice, setNotice] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [crimes, setCrimes] = useState<CrimeRecord[]>([]);
 
-  const runSearch = (postcodes: string[], from: string, to: string) => {console.log('Running search with:', postcodes, from, to);}
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [error, setError] = useState('');
+  const searchGen = useRef(0);
+
+  const runSearch = useCallback(async (postcodes: string[], searchFrom: string, searchTo: string) => {
+    const gen = ++searchGen.current;
+    setError('');
+    const months = monthsBetween(searchFrom, searchTo);
+    const totalCombos = postcodes.length * months.length;
+    if (totalCombos > MAX_REQUESTS) {
+      setError(
+        `That's ${totalCombos} postcode/month combinations - please narrow your postcodes or date range (max ${MAX_REQUESTS}).`
+      );
+      return;
+    }
+
+    updateQueryString(postcodes, searchFrom, searchTo);
+    setLoading(true);
+    setProgress({ done: 0, total: postcodes.length + totalCombos });
+
+    const stillCurrent = () => gen === searchGen.current;
+
+    try {
+      const geocoded: SearchPoint[] = [];
+      const issues: string[] = [];
+
+      await Promise.all(
+        postcodes.map((pc) =>
+          limiter(async () => {
+            try {
+              const loc = await geocodePostcode(pc);
+              geocoded.push({ postcode: loc.label || pc, lat: loc.lat, lng: loc.lng });
+            } catch (e) {
+              issues.push(`${pc}: ${(e as Error).message}`);
+            } finally {
+              if (stillCurrent()) setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+            }
+          })
+        )
+      );
+
+      if (!stillCurrent()) return;
+
+      if (geocoded.length === 0) {
+        setCrimes([]);
+        setError(`Couldn't find any of the entered postcodes. ${issues.join('; ')}`);
+        return;
+      }
+
+      const allRows: CrimeRecord[] = [];
+      await Promise.all(
+        geocoded.flatMap((g) =>
+          months.map((month) =>
+            limiter(async () => {
+              try {
+                const raw = await fetchCrimes(g.lat, g.lng, month);
+                allRows.push(...normalize(raw, g.postcode));
+              } catch (e) {
+                issues.push(`${g.postcode} (${month}): ${(e as Error).message}`);
+              } finally {
+                if (stillCurrent()) setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+              }
+            })
+          )
+        )
+      );
+
+      if (!stillCurrent()) return;
+
+      setCrimes(allRows);
+      if (issues.length) setError(`Some requests had issues: ${issues.join('; ')}`);
+      else if (allRows.length === 0) setError('No crimes found for that search.');
+    } finally {
+      if (stillCurrent()) {
+        setLoading(false);
+        setProgress(null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -62,9 +149,11 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             notice={notice}
           />
         </Toolbar>
-        
-       
-        
+        {loading && progress && (
+          <LinearProgress 
+            variant="determinate" 
+            value={(progress.done / progress.total) * 100} />
+        )}
       </AppBar>
       <Grid container sx={{p:2, pb:0}}>
         <Grid size={{xs:12, sm:12, md:2}} sx={{p:1}}>

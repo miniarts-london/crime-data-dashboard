@@ -1,6 +1,7 @@
 import { currentMonth } from "@/lib/dateRange";
 import { parsePostcodesInput } from "@/lib/postcodes";
-import { InitialParams } from "@/types/dashboard";
+import { bucketFor } from "@/lib/theme";
+import { CrimeRecord, InitialParams, RawCrime } from "@/types/dashboard";
 
 function getParam(
   search: URLSearchParams | Record<string, string | string[] | undefined>,
@@ -38,3 +39,21 @@ export function clearQueryString() {
   window.history.replaceState(null, '', window.location.pathname);
 }
 
+export function normalize(raw: RawCrime[], postcode: string): CrimeRecord[] {
+  return raw.map((c) => {
+    const loc = c.location;
+    const hasLocation = Boolean(loc && loc.latitude && loc.longitude);
+    return {
+      id: `${postcode}-${c.id ?? c.persistent_id}`,
+      postcode,
+      hasLocation,
+      lat: hasLocation && loc ? parseFloat(loc.latitude) : null,
+      lng: hasLocation && loc ? parseFloat(loc.longitude) : null,
+      category: c.category,
+      bucket: bucketFor(c.category),
+      street: loc?.street?.name?.replace(/^on or near\s*/i, '') || 'Unknown location',
+      month: c.month,
+      outcome: c.outcome_status?.category || 'No outcome recorded yet',
+    };
+  });
+}
