@@ -289,9 +289,16 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
           <Grid size={{xs:12, sm:12, lg:6}} sx={{p:1}}>
             <Paper variant="outlined">
               <Box sx={{ p: 2, pb: 1 }}>
-                <Typography variant="overline" color="primary">
-                  Crime Map
-                </Typography>
+                <Box sx={{ p: 2, pb: 1 }}>
+                  <Typography variant="overline" color="primary">
+                    Crime Map
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stats.total > 0
+                      ? `${stats.total.toLocaleString()} crime${stats.total === 1 ? '' : 's'} plotted by location - click a marker for details`
+                      : 'Crimes matching your search, plotted by location - click a marker for details'}
+                  </Typography>
+                </Box>
                 <Box sx={{ height: 360, mt: 1, '& .leaflet-container': { height: '100%', width: '100%' } }}>
                   <CrimeMap
                     crimes={filteredCrimes}
