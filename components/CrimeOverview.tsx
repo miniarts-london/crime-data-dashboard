@@ -1,0 +1,113 @@
+'use client';
+
+import { Box, Paper, Typography, Grid } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { colorFor, categoryLabel, bucketFor } from '@/lib/theme';
+import { useColorMode } from './ContextRoot/Providers';
+
+interface BarRowProps {
+  label: string;
+  count: number;
+  max: number;
+  color: string;
+}
+
+function BarRow({ label, count, max, color }: BarRowProps) {
+  const pct = max > 0 ? Math.max((count / max) * 100, 3) : 0;
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.4 }}>
+      <Typography variant="body2" noWrap title={label} sx={{ width: 200, flexShrink: 0 }}>
+        {label}
+      </Typography>
+      <Box sx={{ flex: 1, height: 8, bgcolor: 'action.hover', borderRadius: 4, overflow: 'hidden' }}>
+        <Box sx={{ width: `${pct}%`, height: '100%', bgcolor: color, borderRadius: 4 }} />
+      </Box>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ width: 48, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+      >
+        {count.toLocaleString()}
+      </Typography>
+    </Box>
+  );
+}
+
+interface CrimeOverviewProps {
+  total: number;
+  categoryCounts: Record<string, number>;
+  outcomeCounts: Record<string, number>;
+}
+
+export default function CrimeOverview({ total, categoryCounts, outcomeCounts }: CrimeOverviewProps) {
+  const { mode } = useColorMode();
+  const theme = useTheme();
+  const outcomeBarColor = theme.palette.secondary.main;
+
+  const categoryEntries = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+  const outcomeEntries = Object.entries(outcomeCounts).sort((a, b) => b[1] - a[1]);
+  const maxCategory = categoryEntries[0]?.[1] || 0;
+  const maxOutcome = outcomeEntries[0]?.[1] || 0;
+
+  return (
+    <Grid container spacing={2}>
+      <Grid size={{sm:12, md:12, lg:'grow'}}>
+        <Paper variant="outlined">
+          <Box sx={{ minWidth: 110, p:2, textAlign:'center'}}>
+            <Typography variant="overline" color="primary">
+              Total crimes
+            </Typography>
+            <Typography variant="h3" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+              {total.toLocaleString()}
+            </Typography>
+          </Box>
+        </Paper>
+      </Grid>
+      <Grid size={{xs:12, sm:6, md:6, lg:5}}>
+        <Paper>
+          <Box sx={{ p:2 }}>
+            <Typography variant="overline" color="primary">
+              By category
+            </Typography>
+            {categoryEntries.length === 0 && (
+              <Typography variant="body2" color="warning">
+                No data yet - run a search above.
+              </Typography>
+            )}
+            {categoryEntries.map(([cat, count]) => (
+              <BarRow 
+                key={cat} 
+                label={categoryLabel(cat)} 
+                count={count} max={maxCategory} 
+                color={colorFor(bucketFor(cat), mode)} 
+              />
+            ))}
+          </Box>
+        </Paper>
+      </Grid>
+      <Grid size={{xs:12, sm:6, md:6, lg:5}}>
+        <Paper>
+          <Box sx={{ p:2}}>
+            <Typography variant="overline" color="primary">
+              By outcome status
+            </Typography>
+            {outcomeEntries.length === 0 && (
+              <Typography variant="body2" color="warning">
+                No data yet - run a search above.
+              </Typography>
+            )}
+            {outcomeEntries.map(([outcome, count]) => (
+              <BarRow 
+                key={outcome} 
+                label={outcome} 
+                count={count} 
+                max={maxOutcome} 
+                color={outcomeBarColor} 
+              />
+            ))}
+          </Box>
+        </Paper>
+      </Grid>
+    </Grid>
+  );
+}

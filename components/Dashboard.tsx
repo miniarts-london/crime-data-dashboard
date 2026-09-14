@@ -2,8 +2,8 @@
 
 import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress } from "@mui/material";
 import SearchBar from "./SearchBar";
-import { FormEvent, useCallback, useRef, useState } from "react";
-import { CrimeRecord, InitialParams, SearchPoint } from "@/types/dashboard";
+import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
+import { CrimeRecord, InitialParams, QuickFilters, SearchPoint } from "@/types/dashboard";
 import { parsePostcodesInput } from "@/lib/postcodes";
 import { currentMonth, monthsBetween } from "@/lib/dateRange";
 import Header from "./Header";
@@ -13,6 +13,7 @@ import { fetchCrimes, geocodePostcode } from '@/lib/police';
 import { normalize, updateQueryString } from "@/components/Helper";
 import { createLimiter } from "@/lib/concurrency";
 import SnackBar from "./snackBar";
+import CrimeOverview from "./CrimeOverview";
 
 const limiter = createLimiter(4);
 
@@ -30,6 +31,29 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [openSnackBar, setOpenSnackBar] = useState(false);
   const searchGen = useRef(0);
 
+  const [quickFilters, setQuickFilters] = useState<QuickFilters>({ postcode: null, category: null, outcome: null });
+
+  const filteredCrimes = useMemo(
+    () =>
+      crimes.filter(
+        (c) =>
+          (!quickFilters.postcode || c.postcode === quickFilters.postcode) &&
+          (!quickFilters.category || c.category === quickFilters.category) &&
+          (!quickFilters.outcome || c.outcome === quickFilters.outcome)
+      ),
+    [crimes, quickFilters]
+  );
+
+  const stats = useMemo(() => {
+    const categoryCounts: Record<string, number> = {};
+    const outcomeCounts: Record<string, number> = {};
+    filteredCrimes.forEach((c) => {
+      categoryCounts[c.category] = (categoryCounts[c.category] || 0) + 1;
+      outcomeCounts[c.outcome] = (outcomeCounts[c.outcome] || 0) + 1;
+    });
+    return { total: filteredCrimes.length, categoryCounts, outcomeCounts };
+  }, [filteredCrimes]);
+
   const runSearch = useCallback(async (postcodes: string[], searchFrom: string, searchTo: string) => {
     const gen = ++searchGen.current;
     setError('');
@@ -45,6 +69,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
 
     updateQueryString(postcodes, searchFrom, searchTo);
     setLoading(true);
+    setQuickFilters({ postcode: null, category: null, outcome: null });
     setProgress({ done: 0, total: postcodes.length + totalCombos });
 
     const stillCurrent = () => gen === searchGen.current;
@@ -169,7 +194,11 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             {/* postcode search history */}
           </Grid>
           <Grid size={{xs:12, sm:12, md:'grow'}} sx={{ p:1 }}>
-            {/* overview */}
+            <CrimeOverview 
+              total={stats.total} 
+              categoryCounts={stats.categoryCounts} 
+              outcomeCounts={stats.outcomeCounts} 
+            />
           </Grid>
         </Grid> 
         <Grid container sx={{p:2}}>
