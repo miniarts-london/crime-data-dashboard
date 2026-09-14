@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Chip, Stack, Typography, Paper } from '@mui/material';
+import { Box, Chip, Typography, Paper } from '@mui/material';
 import type { HistoryEntry } from '@/lib/usePostcodeHistory';
 
 interface PostcodeHistoryProps {
@@ -21,17 +21,17 @@ export default function PostcodeHistory({ entries, onSelect, onRemove }: Postcod
             Postcodes you search will appear here.
           </Typography>
         ) : (
-          <Stack
+          <Box
             component="ul"
-            direction={{ xs: 'row', md: 'column' }}
-            alignItems="flex-start"
             sx={{
+              display: 'flex',
+              flexDirection: { xs: 'row', md: 'column' },
+              alignItems: 'flex-start',
               m: 0,
               mt: 1,
               p: 0,
               listStyle: 'none',
               gap: 1,
-              alignItems: 'flex-start',
               flexWrap: { xs: 'wrap', md: 'nowrap' },
               width: { xs: '100%', md: 'fit-content' },
             }}
@@ -47,7 +47,7 @@ export default function PostcodeHistory({ entries, onSelect, onRemove }: Postcod
                 />
               </Box>
             ))}
-          </Stack>
+          </Box>
         )}
       </Box>
     </Paper>
