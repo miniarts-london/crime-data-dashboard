@@ -2,7 +2,7 @@
 
 import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress } from "@mui/material";
 import SearchBar from "./SearchBar";
-import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CrimeRecord, InitialParams, QuickFilters, SearchPoint } from "@/types/dashboard";
 import { parsePostcodesInput } from "@/lib/postcodes";
 import { currentMonth, monthsBetween } from "@/lib/dateRange";
@@ -30,6 +30,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [error, setError] = useState('');
   const [openSnackBar, setOpenSnackBar] = useState(false);
   const searchGen = useRef(0);
+  const didAutoSearch = useRef(false);
 
   const [quickFilters, setQuickFilters] = useState<QuickFilters>({ postcode: null, category: null, outcome: null });
 
@@ -132,7 +133,17 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
+  
+  useEffect(() => {
+    if (didAutoSearch.current) return;
+    didAutoSearch.current = true;
+    if (initialParams.postcodes.length > 0) {
+      queueMicrotask(() => {
+        runSearch(initialParams.postcodes, initialParams.from, initialParams.to);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
