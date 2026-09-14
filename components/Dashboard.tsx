@@ -12,6 +12,7 @@ import { MAX_REQUESTS } from "@/config/config";
 import { fetchCrimes, geocodePostcode } from '@/lib/police';
 import { normalize, updateQueryString } from "@/components/Helper";
 import { createLimiter } from "@/lib/concurrency";
+import SnackBar from "./snackBar";
 
 const limiter = createLimiter(4);
 
@@ -26,6 +27,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState('');
+  const [openSnackBar, setOpenSnackBar] = useState(false);
   const searchGen = useRef(0);
 
   const runSearch = useCallback(async (postcodes: string[], searchFrom: string, searchTo: string) => {
@@ -37,6 +39,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       setError(
         `That's ${totalCombos} postcode/month combinations - please narrow your postcodes or date range (max ${MAX_REQUESTS}).`
       );
+      setOpenSnackBar(true);
       return;
     }
 
@@ -127,65 +130,79 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
    console.log('Resetting search');
   };
 
+  const handleCloseSnackbar = () => {
+    setOpenSnackBar(false)
+    setError('')
+  }
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <AppBar position="static" color="default" elevation={1}>
-        <Toolbar sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, py: 1.5 }}>
-          <Header
-            mode={mode}
-            toggleColorMode={toggleColorMode}
-          />
-          <SearchBar
-            postcodes={postcodes}
-            onPostcodesChange={setPostcodes}
-            postcodeOptions={[]}
-            from={from}
-            onFromChange={setFrom}
-            to={to}
-            onToChange={setTo}
-            onSubmit={handleSearchSubmit}
-            onReset={handleReset}
-            loading={loading}
-            notice={notice}
-          />
-        </Toolbar>
-        {loading && progress && (
-          <LinearProgress 
-            variant="determinate" 
-            value={(progress.done / progress.total) * 100} />
-        )}
-      </AppBar>
-      <Grid container sx={{p:2, pb:0}}>
-        <Grid size={{xs:12, sm:12, md:2}} sx={{p:1}}>
-          {/* postcode search history */}
-        </Grid>
-        <Grid size={{xs:12, sm:12, md:'grow'}} sx={{ p:1 }}>
-          {/* overview */}
-        </Grid>
-      </Grid> 
-      <Grid container sx={{p:2}}>
-        <Grid size={{xs:12, sm:12, lg:6}} sx={{p:1}}>
-          <Paper variant="outlined">
-            <Box sx={{ p: 2, pb: 1 }}>
-              <Typography variant="overline" color="primary">
-                Crime Map
-              </Typography>
-             </Box>
-          </Paper>
-        </Grid>
-        <Grid size={{xs:12, sm:12, lg:6}} sx={{p:1}}>
-          <Paper variant="outlined">
-            <Box sx={{ p: 2, pb: 1 }}>
-              <Typography variant="overline" color="primary">
-                Crime Table
+    <>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+        <AppBar position="static" color="default" elevation={1}>
+          <Toolbar sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, py: 1.5 }}>
+            <Header
+              mode={mode}
+              toggleColorMode={toggleColorMode}
+            />
+            <SearchBar
+              postcodes={postcodes}
+              onPostcodesChange={setPostcodes}
+              postcodeOptions={[]}
+              from={from}
+              onFromChange={setFrom}
+              to={to}
+              onToChange={setTo}
+              onSubmit={handleSearchSubmit}
+              onReset={handleReset}
+              loading={loading}
+              notice={notice}
+            />
+          </Toolbar>
+          {loading && progress && (
+            <LinearProgress 
+              variant="determinate" 
+              value={(progress.done / progress.total) * 100} />
+          )}
+        </AppBar>
+        <Grid container sx={{p:2, pb:0}}>
+          <Grid size={{xs:12, sm:12, md:2}} sx={{p:1}}>
+            {/* postcode search history */}
+          </Grid>
+          <Grid size={{xs:12, sm:12, md:'grow'}} sx={{ p:1 }}>
+            {/* overview */}
+          </Grid>
+        </Grid> 
+        <Grid container sx={{p:2}}>
+          <Grid size={{xs:12, sm:12, lg:6}} sx={{p:1}}>
+            <Paper variant="outlined">
+              <Box sx={{ p: 2, pb: 1 }}>
+                <Typography variant="overline" color="primary">
+                  Crime Map
                 </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Click a postcode, crime type, or outcome status to filter the results
-              </Typography>
-            </Box>
-          </Paper>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid size={{xs:12, sm:12, lg:6}} sx={{p:1}}>
+            <Paper variant="outlined">
+              <Box sx={{ p: 2, pb: 1 }}>
+                <Typography variant="overline" color="primary">
+                  Crime Table
+                  </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Click a postcode, crime type, or outcome status to filter the results
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
-    </Box>
+      </Box>
+      {error && (
+        <SnackBar 
+          openSnackbar={openSnackBar} 
+          message={error} 
+          handleCloseSnackbar={handleCloseSnackbar}
+        />
+      )}
+    </>
   );
 }
