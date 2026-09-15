@@ -18,7 +18,7 @@ npm run lint
 
 ## Trade-offs
 
-- **APIs are called from the browser, not through Next.js route handlers.** That kept the app a static client with no backend to host or rate-limit. What it gives up: server-side caching, a single place to retry/backoff, and a HTTPS proxy for getthedata’s `http://` endpoint (which can fail as mixed content on an HTTPS deploy).
+- **APIs are called from the browser, not through Next.js route handlers.** That kept the app a static client with no backend to host or rate-limit. What it gives up: server-side caching, a single place to retry/backoff, and a HTTPS proxy for getthedata’s `http://` endpoint (which can fail as mixed content on an HTTPS deploy). 
 
 - **The map skips SSR (`next/dynamic` with `ssr: false`) so Leaflet never runs on the server.** That avoided the `window is not defined` crash. What it gives up: the map is absent from the first HTML payload, and this is only a client-only import, not true on-demand loading — the map still downloads as soon as the dashboard mounts, so people who never search still pay for Leaflet.
 
@@ -30,7 +30,7 @@ npm run lint
 
 ## What I'd do with more time
 
-- **Proxy the two APIs through Next.js Route Handlers** (`app/api/postcode/[postcode]/route.ts`, `app/api/crimes/route.ts`). No new infrastructure — Next.js already runs a server for this app — and it closes the mixed-content risk for real, drops the `NEXT_PUBLIC_` prefix requirement, and opens the door to shared server-side caching instead of today's per-browser in-memory cache.
+- **Proxy the two APIs through Next.js Route Handlers** (`app/api/postcode/[postcode]/route.ts`, `app/api/crimes/route.ts`). No new infrastructure — Next.js already runs a server for this app — and it closes the mixed-content risk for real, drops the `NEXT_PUBLIC_` prefix requirement, and opens the door to shared server-side caching instead of today's per-browser in-memory cache. I've fixed it and deployed it at `https://crime-data-dashboard-2.vercel.app`. Repo is `https://github.com/miniarts-london/crime-data-dashboard-improvement`.
 
 - **Gate the map behind whether a search has happened**, not just behind SSR: `{searchPoints.length > 0 ? <CrimeMap .../> : <Typography>No data yet - run a search above.</Typography>}`. `next/dynamic(..., { ssr: false })` stays as-is for the SSR-safety it already gives; this just stops the Leaflet bundle from downloading for a visitor who never searches.
 
